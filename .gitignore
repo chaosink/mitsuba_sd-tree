@@ -46,3 +46,8 @@
 /visualizer/build
 
 *.vcxproj.user
+
+/build
+
+# Scenes
+/scenes_test

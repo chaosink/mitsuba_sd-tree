@@ -28,6 +28,7 @@
 #include <functional>
 #include <iomanip>
 #include <sstream>
+#include <fstream>
 
 MTS_NAMESPACE_BEGIN
 
@@ -747,7 +748,7 @@ public:
                 return;
             }
         }
-        
+
         struct StackNode {
             size_t index;
             int depth;
