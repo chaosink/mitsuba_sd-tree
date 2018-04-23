@@ -943,6 +943,8 @@ public:
         }
 
         m_sdTree->dump(blob);
+
+        Log(EInfo, "SDTree dumped: %s. ", path.leaf().string().c_str());
     }
 
     bool performRenderPasses(Float& variance, int numPasses, Scene *scene, RenderQueue *queue, const RenderJob *job,
@@ -1065,6 +1067,29 @@ public:
         }
     }
 
+    void getDistAtFirstHit(Scene* scene, ref<Sensor> sensor) {
+    	using namespace std;
+    	while(cin.peek() != '\n') {
+    		float x, y;
+    		cin >> x >> y;
+    		cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    		Point2 samplePos(x, y);
+    		Point2 apertureSample(0.5f);
+    		Float timeSample = 0.5f;
+    		Ray ray;
+    		sensor->sampleRay(ray, samplePos, apertureSample, timeSample);
+
+    		Intersection its;
+    		scene->rayIntersect(ray, its);
+
+    		DTreeWrapper* dTree = m_sdTree->dTreeWrapper(its.p);
+
+    		cout << its.p.toString() << endl;
+    	}
+    	cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+
     bool renderSPP(Scene *scene, RenderQueue *queue, const RenderJob *job,
         int sceneResID, int sensorResID, int samplerResID, int integratorResID) {
 
@@ -1094,6 +1119,12 @@ public:
 
             film->clear();
             resetSDTree();
+
+            getDistAtFirstHit(scene, sensor);
+
+            if (m_dumpSDTree) {
+                dumpSDTree(scene, sensor);
+            }
 
             Float variance;
             if (!performRenderPasses(variance, passesThisIteration, scene, queue, job, sceneResID, sensorResID, samplerResID, integratorResID)) {
@@ -1127,10 +1158,6 @@ public:
                 }
             }
             buildSDTree();
-
-            if (m_dumpSDTree) {
-                dumpSDTree(scene, sensor);
-            }
 
             ++m_iter;
             m_passesRenderedThisIter = 0;
@@ -1175,6 +1202,12 @@ public:
             film->clear();
             resetSDTree();
 
+            getDistAtFirstHit(scene, sensor);
+
+            if (m_dumpSDTree) {
+                dumpSDTree(scene, sensor);
+            }
+
             Float variance;
             if (!performRenderPasses(variance, passesThisIteration, scene, queue, job, sceneResID, sensorResID, samplerResID, integratorResID)) {
                 result = false;
@@ -1213,10 +1246,6 @@ public:
                 } while (elapsedSeconds < nSeconds);
             }
             buildSDTree();
-
-            if (m_dumpSDTree) {
-                dumpSDTree(scene, sensor);
-            }
 
             ++m_iter;
             m_passesRenderedThisIter = 0;

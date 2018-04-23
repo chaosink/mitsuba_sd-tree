@@ -577,36 +577,66 @@ public:
         updateColors();
     }
 
+    // void updateDTree(STree& dist, const Vector2i &p) {
+    //     // Obtain clicking point in [-1,1]^3 screen space.
+    //     Vector2f point = (pixelToCanonical(p) * 2) - Vector2f{1, 1};
+    //     Vector3f pEye = eye();
+
+    //     // Map screen space point with some depth to scene point to obtain looking direction
+    //     // of clicked location in world space.
+    //     Vector4f dirHomo = mvp().inverse() * Vector4f(point.x(), -point.y(), 1, 1);
+    //     Vector3f dir = (dirHomo.topRows(3) / dirHomo.w() - pEye).normalized();
+
+    //     auto distPointDir = [](Vector3f o, Vector3f dir, Vector3f p) {
+    //         Vector3f difference = p - o;
+    //         float d = difference.norm();
+    //         Vector3f toPoint = difference / d;
+    //         float other = toPoint.dot(dir) * d;
+
+    //         return sqrt(d * d - other * other);
+    //     };
+
+    //     vector<size_t> nearPoints;
+
+    //     float eyeDist = dir.dot(pEye);
+
+    //     // Find sampling point with shortest distance to ray parametrized by
+    //     // o = mEye and d = dir
+    //     float minDist = numeric_limits<float>::infinity();
+    //     size_t minI = numeric_limits<size_t>::max();
+    //     for (size_t i = 0; i < dist.dTrees.size(); ++i) {
+
+    //         float distance = distPointDir(pEye, dir, dist.dTrees[i]->pos());
+
+    //         if (distance < minDist) {
+    //             minDist = distance;
+    //             minI = i;
+    //         }
+    //     }
+
+    //     if (minI == numeric_limits<size_t>::max()) {
+    //         return;
+    //     }
+
+    //     // Visualize the selected sampling point
+    //     setDTree(dist, minI);
+    // }
+
     void updateDTree(STree& dist, const Vector2i &p) {
-        // Obtain clicking point in [-1,1]^3 screen space.
-        Vector2f point = (pixelToCanonical(p) * 2) - Vector2f{1, 1};
-        Vector3f pEye = eye();
-
-        // Map screen space point with some depth to scene point to obtain looking direction
-        // of clicked location in world space.
-        Vector4f dirHomo = mvp().inverse() * Vector4f(point.x(), -point.y(), 1, 1);
-        Vector3f dir = (dirHomo.topRows(3) / dirHomo.w() - pEye).normalized();
-
-        auto distPointDir = [](Vector3f o, Vector3f dir, Vector3f p) {
-            Vector3f difference = p - o;
-            float d = difference.norm();
-            Vector3f toPoint = difference / d;
-            float other = toPoint.dot(dir) * d;
-
-            return sqrt(d * d - other * other);
-        };
-
-        vector<size_t> nearPoints;
-
-        float eyeDist = dir.dot(pEye);
+    	float x, y, z;
+    	char c;
+    	// cin >> c >> x >> c >> y >> c >> z >> c;
+    	Vector3f o(x, y, z);
 
         // Find sampling point with shortest distance to ray parametrized by
         // o = mEye and d = dir
         float minDist = numeric_limits<float>::infinity();
         size_t minI = numeric_limits<size_t>::max();
         for (size_t i = 0; i < dist.dTrees.size(); ++i) {
-
-            float distance = distPointDir(pEye, dir, dist.dTrees[i]->pos());
+        	cout << endl << dist.dTrees[i]->pos() << endl;
+        	Vector3f p = dist.dTrees[i]->pos();
+        	Vector3f d = p - o;
+            float distance = d.x() * d.x() + d.y() * d.y() + d.z() * d.z();
 
             if (distance < minDist) {
                 minDist = distance;
@@ -776,7 +806,7 @@ public:
     }
 
     Vector3f eye() {
-        
+
         Vector4f eyeHomo = mCamera.inverse() * Vector4f(0, 0, 0, 1);
         return eyeHomo.topRows(3) / eyeHomo.w();
     }
