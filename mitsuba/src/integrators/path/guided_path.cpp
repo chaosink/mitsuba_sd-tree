@@ -1085,7 +1085,8 @@ public:
 
             DTreeWrapper* dTree = m_sdTree->dTreeWrapper(its.p);
 
-            cout << its.p.toString() << endl;
+            ofstream ofs("/tmp/position.txt");
+            ofs << its.p.toString() << endl;
         }
         cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }

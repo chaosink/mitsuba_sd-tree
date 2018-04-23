@@ -24,6 +24,7 @@
 #include <iomanip> // setprecision
 #include <sstream> // stringstream
 #include <memory>
+#include <sys/stat.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -623,9 +624,17 @@ public:
     // }
 
     void updateDTree(STree& dist, const Vector2i &p) {
-        float x, y, z;
+        struct stat attr;
+        stat("/tmp/position.txt", &attr);
+        static time_t last = 0;
+        if(last == attr.st_mtime) return;
+        last = attr.st_mtime;
+
+        float x = 0, y = 0, z = 0;
         char c;
-        cin >> c >> x >> c >> y >> c >> z >> c;
+        ifstream ifs("/tmp/position.txt");
+        ifs >> c >> x >> c >> y >> c >> z >> c;
+        cout << x << " " << y << " " << z << endl;
         Vector3f o(x, y, z);
 
         // Find sampling point with shortest distance to the input position
@@ -764,11 +773,14 @@ public:
     }
 
     void draw(NVGcontext *ctx) override {
+
+
         if (!mSDTrees.empty()) {
             syncImageViews();
         }
 
-        if (mShallUpdatePosition) {
+        // if (mShallUpdatePosition) {
+        if (true) {
             for (auto& sTree : mSDTrees) {
                 updateDTree(sTree, mPositionToUpdate);
             }
