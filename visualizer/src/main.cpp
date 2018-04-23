@@ -632,7 +632,6 @@ public:
         float minDist = numeric_limits<float>::infinity();
         size_t minI = numeric_limits<size_t>::max();
         for (size_t i = 0; i < dist.dTrees.size(); ++i) {
-            cout << endl << dist.dTrees[i]->pos() << endl;
             Vector3f p = dist.dTrees[i]->pos();
             Vector3f d = p - o;
             float distance = d.x() * d.x() + d.y() * d.y() + d.z() * d.z();
