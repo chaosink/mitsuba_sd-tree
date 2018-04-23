@@ -1068,26 +1068,26 @@ public:
     }
 
     void getDistAtFirstHit(Scene* scene, ref<Sensor> sensor) {
-    	using namespace std;
-    	while(cin.peek() != '\n') {
-    		float x, y;
-    		cin >> x >> y;
-    		cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        using namespace std;
+        while(cin.peek() != '\n') {
+            float x, y;
+            cin >> x >> y;
+            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-    		Point2 samplePos(x, y);
-    		Point2 apertureSample(0.5f);
-    		Float timeSample = 0.5f;
-    		Ray ray;
-    		sensor->sampleRay(ray, samplePos, apertureSample, timeSample);
+            Point2 samplePos(x, y);
+            Point2 apertureSample(0.5f);
+            Float timeSample = 0.5f;
+            Ray ray;
+            sensor->sampleRay(ray, samplePos, apertureSample, timeSample);
 
-    		Intersection its;
-    		scene->rayIntersect(ray, its);
+            Intersection its;
+            scene->rayIntersect(ray, its);
 
-    		DTreeWrapper* dTree = m_sdTree->dTreeWrapper(its.p);
+            DTreeWrapper* dTree = m_sdTree->dTreeWrapper(its.p);
 
-    		cout << its.p.toString() << endl;
-    	}
-    	cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            cout << its.p.toString() << endl;
+        }
+        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 
     bool renderSPP(Scene *scene, RenderQueue *queue, const RenderJob *job,
