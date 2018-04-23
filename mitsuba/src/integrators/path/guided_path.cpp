@@ -1377,7 +1377,7 @@ public:
         }
 
         Spectrum result;
-        if (sample.x < m_bsdfSamplingFraction) {
+        if (sample.x < m_bsdfSamplingFraction) { // MIS with RR
             sample.x /= m_bsdfSamplingFraction;
             result = bsdf->sample(bRec, pdf, sample);
             if (result.isZero()) {
@@ -1391,11 +1391,11 @@ public:
                 return result / m_bsdfSamplingFraction;
             }
 
-            result *= pdf;
+            result *= pdf; // the result is the cosined BSDF value already divided by pdf, so multipy back pdf to get the cosined BSDF value
         } else {
             sample.x = (sample.x - m_bsdfSamplingFraction) / (1 - m_bsdfSamplingFraction);
             bRec.wo = bRec.its.toLocal(dTree->sampleDirection(sample));
-            result = bsdf->eval(bRec);
+            result = bsdf->eval(bRec); // cosined BSDF value
         }
 
         pdf = pdfMat(bsdf, bRec, dTree);
