@@ -465,7 +465,7 @@ public:
         Vector3f max = Vector3f::Constant(-numeric_limits<float>::infinity());
 
         while (true) {
-			shared_ptr<DTree> dTree = shared_ptr<DTree>(new DTree());
+            shared_ptr<DTree> dTree = shared_ptr<DTree>(new DTree());
             if (!dTree->read(reader)) {
                 break;
             }
@@ -623,19 +623,18 @@ public:
     // }
 
     void updateDTree(STree& dist, const Vector2i &p) {
-    	float x, y, z;
-    	char c;
-    	// cin >> c >> x >> c >> y >> c >> z >> c;
-    	Vector3f o(x, y, z);
+        float x, y, z;
+        char c;
+        cin >> c >> x >> c >> y >> c >> z >> c;
+        Vector3f o(x, y, z);
 
-        // Find sampling point with shortest distance to ray parametrized by
-        // o = mEye and d = dir
+        // Find sampling point with shortest distance to the input position
         float minDist = numeric_limits<float>::infinity();
         size_t minI = numeric_limits<size_t>::max();
         for (size_t i = 0; i < dist.dTrees.size(); ++i) {
-        	cout << endl << dist.dTrees[i]->pos() << endl;
-        	Vector3f p = dist.dTrees[i]->pos();
-        	Vector3f d = p - o;
+            cout << endl << dist.dTrees[i]->pos() << endl;
+            Vector3f p = dist.dTrees[i]->pos();
+            Vector3f d = p - o;
             float distance = d.x() * d.x() + d.y() * d.y() + d.z() * d.z();
 
             if (distance < minDist) {
