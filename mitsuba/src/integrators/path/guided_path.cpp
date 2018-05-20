@@ -955,6 +955,9 @@ public:
         m_image->clear();
         m_squaredImage->clear();
 
+        // NNAdaptive: shading normal buffer
+        m_normalBuffer->clear();
+
         size_t totalBlocks = 0;
 
         Log(EInfo, "Rendering %d render passes.", numPasses);
@@ -1050,6 +1053,9 @@ public:
         const Float stuv = passesRenderedLocal * 4 * variance;
         Log(EInfo, "%.2f seconds, Total passes: %d, Var: %f, TTUV: %f, STUV: %f.",
             seconds, m_passesRendered, variance, ttuv, stuv);
+
+        // NNAdaptive: shading normal buffer
+        std::swap(m_normalBuffer, m_normalBuffer_last);
 
         return result;
     }
@@ -1247,6 +1253,13 @@ public:
         m_squaredImage = new ImageBlock(Bitmap::ESpectrumAlphaWeight, film->getSize(), film->getReconstructionFilter());
         m_image = new ImageBlock(Bitmap::ESpectrumAlphaWeight, film->getSize(), film->getReconstructionFilter());
 
+        // NNAdaptive: shading normal buffer
+        m_normalBuffer = new ImageBlock(Bitmap::ESpectrumAlphaWeight, film->getSize(), film->getReconstructionFilter());
+        m_normalBuffer_last = new ImageBlock(Bitmap::ESpectrumAlphaWeight, film->getSize(), film->getReconstructionFilter());
+        // NNAdaptive: light field export
+        for(int i = 0; i < m_lightFieldNum; i++)
+            m_lightField[i] = new ImageBlock(Bitmap::ESpectrumAlphaWeight, film->getSize(), film->getReconstructionFilter());
+
         Log(EInfo, "Starting render job (%ix%i, " SIZE_T_FMT " %s, " SSE_STR ") ..", film->getCropSize().x, film->getCropSize().y, nCores, nCores == 1 ? "core" : "cores");
 
         Thread::initializeOpenMP(nCores);
@@ -1297,6 +1310,11 @@ public:
         squaredBlock->setOffset(block->getOffset());
         squaredBlock->clear();
 
+        // NNAdaptive: shading normal buffer
+        ref<ImageBlock> normalBlock = new ImageBlock(block->getPixelFormat(), block->getSize(), block->getReconstructionFilter());
+        normalBlock->setOffset(block->getOffset());
+        normalBlock->clear();
+
         uint32_t queryType = RadianceQueryRecord::ESensorRay;
 
         if (!sensor->getFilm()->hasAlpha()) // Don't compute an alpha channel if we don't have to
@@ -1321,12 +1339,20 @@ public:
 
                 sensorRay.scaleDifferential(diffScaleFactor);
 
+                // NNAdaptive: shading normal buffer
+                Spectrum normal = spec * Normal(sensorRay, rRec);
+                normalBlock->put(samplePos, normal, rRec.alpha);
+
+                Float lightField[16];
                 spec *= Li(sensorRay, rRec);
                 block->put(samplePos, spec, rRec.alpha);
                 squaredBlock->put(samplePos, spec * spec, rRec.alpha);
                 sampler->advance();
             }
         }
+
+        // NNAdaptive: shading normal buffer
+        m_normalBuffer->put(normalBlock);
 
         m_squaredImage->put(squaredBlock);
         m_image->put(block);
@@ -1392,6 +1418,68 @@ public:
             m_bsdfSamplingFraction * bsdfPdf +
             (1 - m_bsdfSamplingFraction) * dTree->samplePdf(bRec.its.toWorld(bRec.wo));
     }
+
+    // NNAdaptive: shading normal buffer
+    Spectrum Normal(const RayDifferential &ray, RadianceQueryRecord &rRec) const {
+        Spectrum result(0.f);
+
+        if (!rRec.rayIntersect(ray))
+            return result;
+
+        Intersection &its = rRec.its;
+
+        result.fromLinearRGB(its.shFrame.n.x, its.shFrame.n.y, its.shFrame.n.z);
+
+        return result;
+    }
+
+    inline float FastArcTan(float x)
+    {
+        return (M_PI / 4) * x - x * (fabs(x) - 1)*(0.2447 + 0.0663*fabs(x));
+    }
+
+    inline Point2 LocalDir2Coordinate(const Vector &wo) const {
+
+        Point2 pp;
+
+        float at = std::atan2(wo.y, wo.x) / (2 * M_PI);
+        //float at = FastArcTan(wo.y / wo.x) / (2 * M_PI);
+
+        pp.x = at >= 0 ? at : 1.0f + at;
+        pp.y = (1.0f - wo.z * wo.z);
+
+        pp.x = std::min(std::max(pp.x, 0.0f), 1.0f - 1e-6f);
+        pp.y = std::min(std::max(pp.y, 0.0f), 1.0f - 1e-6f);
+
+        return pp;
+    };
+
+    inline Vector Coordinate2LocalDir(const Point2 &s) const {
+
+        Vector v;
+        v.z = std::sqrt(std::max(1.0f - s.y, 0.0f));
+
+        float theta = s.x * 2 * M_PI;
+        float y_x = std::tan(theta);
+
+        if (std::isinf(y_x)) {
+            v.x = 0.0f;
+            v.y = (theta > M_PI) ? -std::sqrt(std::min(1.0f, 1.0f - v.z * v.z)) : std::sqrt(std::min(1.0f, 1.0f - v.z * v.z));
+        }
+        else {
+            y_x = std::abs(y_x);
+
+            float abs_x = std::sqrt(std::max(0.0f, (1.0f - v.z * v.z) / (1.0f + (y_x * y_x))));
+            v.x = (theta > 0.5 * M_PI && theta < 1.5 * M_PI) ? -abs_x : abs_x;
+            v.y = (theta > M_PI) ? (-y_x * abs_x) : (y_x * abs_x);
+        }
+
+        return (v);
+    };
+
+//    Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec) const {
+//
+//    }
 
     Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec) const {
         struct Vertex {
@@ -1588,6 +1676,17 @@ public:
                 // reflection.
                 if (bsdf->getType() & BSDF::ESmooth) {
                     dTree = m_sdTree->dTreeWrapper(its.p);
+
+                    // NNAdaptive: light field export
+//                    auto properties = Properties("ldsampler");
+//                    ref<Sampler> sampler = static_cast<Sampler*>(PluginManager::getInstance()->createObject(MTS_CLASS(Sampler), properties));
+//                    for(int i = 0; i < m_lightFieldSpp; i++) {
+//                        Vector localDir = Coordinate2LocalDir(sampler->next2D());
+//                        Vector worldDir = its.shFrame.toWorld(localDir);
+//                        Spectrum spec{dTree->estimateRadiance(worldDir)};
+//                        int k = 0;
+////                        m_lightField[k]->put();
+//                    }
                 }
 
                 /* ==================================================================== */
@@ -1893,6 +1992,13 @@ private:
 
     /// This contains the currently estimated variance.
     mutable ref<Film> m_varianceBuffer;
+
+    /// NNAdaptive: shading normal buffer
+    mutable ref<ImageBlock> m_normalBuffer_last;
+    mutable ref<ImageBlock> m_normalBuffer;
+    const static int m_lightFieldNum = 16;
+    const int m_lightFieldSpp = 10240;
+    mutable std::array<ref<ImageBlock>, m_lightFieldNum> m_lightField;
 
     /// The modes of NEE which are supported.
     enum ENee {
