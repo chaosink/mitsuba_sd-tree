@@ -51,3 +51,7 @@
 
 # Scenes
 /scenes_test
+
+# CLion
+/mitsuba/.idea/
+/mitsuba/cmake-build-debug/
