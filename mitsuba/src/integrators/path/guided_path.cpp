@@ -809,6 +809,10 @@ public:
         m_automaticBudget = props.getBoolean("automaticBudget", true);
         m_sppPerPass = props.getInteger("sppPerPass", 4);
 
+        // NNAdaptive
+        m_lightFieldSpp = props.getInteger("lightFieldSpp", 1024);
+        m_iterExport = props.getInteger("iterExport", -1);
+
         m_budgetStr = props.getString("budgetType", "seconds");
         if (m_budgetStr == "spp") {
             m_budgetType = ESpp;
@@ -2060,9 +2064,9 @@ private:
     mutable ref<ImageBlock> m_normalBuffer_last;
     mutable ref<ImageBlock> m_normalBuffer;
     const static int m_lightFieldNum = 16;
-    const int m_lightFieldSpp = 1024;
+    int m_lightFieldSpp;
     mutable std::array<ref<ImageBlock>, m_lightFieldNum> m_lightFieldBuffers;
-    const int m_iterExport = 7  ;
+    int m_iterExport;
 
     /// The modes of NEE which are supported.
     enum ENee {
