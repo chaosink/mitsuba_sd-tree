@@ -61,20 +61,25 @@ static void addToAtomicFloat(std::atomic<Float>& var, Float val) {
     while (!var.compare_exchange_weak(current, current + val));
 }
 
+static void addToAtomicSpectrum(std::atomic<Spectrum>& var, Spectrum &val) {
+    auto current = var.load();
+    while (!var.compare_exchange_weak(current, current + val));
+}
+
 class QuadTreeNode {
 public:
     QuadTreeNode() {
         m_children = {};
         for (size_t i = 0; i < m_mean.size(); ++i) {
-            m_mean[i].store(0, std::memory_order_relaxed);
+            m_mean[i].store(Spectrum(0.f), std::memory_order_relaxed);
         }
     }
 
-    void setMean(int index, Float val) {
+    void setMean(int index, Spectrum &val) {
         m_mean[index].store(val, std::memory_order_relaxed);
     }
 
-    Float mean(int index) const {
+    Spectrum mean(int index) const {
         return m_mean[index].load(std::memory_order_relaxed);
     }
 
@@ -102,7 +107,7 @@ public:
         return m_children[idx];
     }
 
-    void setMean(Float meanVal) {
+    void setMean(Spectrum meanVal) {
         for (int i = 0; i < 4; ++i) {
             setMean(i, meanVal);
         }
@@ -122,7 +127,7 @@ public:
         return res;
     }
 
-    Float eval(Point2& p, const std::vector<QuadTreeNode>& nodes) const {
+    Spectrum eval(Point2& p, const std::vector<QuadTreeNode>& nodes) const {
         SAssert(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
         const int index = childIndex(p);
         if (isLeaf(index)) {
@@ -135,11 +140,11 @@ public:
     Float pdf(Point2& p, const std::vector<QuadTreeNode>& nodes) const {
         SAssert(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
         const int index = childIndex(p);
-        if (!(mean(index) > 0)) {
+        if (!mean(index).isValid()) {
             return 0;
         }
 
-        const Float factor = 4 * mean(index) / (mean(0) + mean(1) + mean(2) + mean(3));
+        const Float factor = 4 * mean(index).average() / (mean(0) + mean(1) + mean(2) + mean(3)).average();
         if (isLeaf(index)) {
             return factor;
         } else {
@@ -160,10 +165,10 @@ public:
     Point2 sample(Point2 sample, const std::vector<QuadTreeNode>& nodes) const {
         int index = 0;
 
-        Float topLeft = mean(0);
-        Float topRight = mean(1);
-        Float partial = topLeft + mean(2);
-        Float total = partial + topRight + mean(3);
+        Float topLeft = mean(0).average();
+        Float topRight = mean(1).average();
+        Float partial = topLeft + mean(2).average();
+        Float total = partial + topRight + mean(3).average();
 
         SAssert(total > 0.0f);
 
@@ -198,11 +203,11 @@ public:
         }
     }
 
-    void record(Point2& p, Float radiance, std::vector<QuadTreeNode>& nodes) {
+    void record(Point2& p, Spectrum &radiance, std::vector<QuadTreeNode>& nodes) {
         SAssert(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
         int index = childIndex(p);
 
-        addToAtomicFloat(m_mean[index], radiance);
+        addToAtomicSpectrum(m_mean[index], radiance);
 
         if (!isLeaf(index)) {
             nodes[child(index)].record(p, radiance, nodes);
@@ -214,7 +219,7 @@ public:
     }
 
 private:
-    std::array<std::atomic<Float>, 4> m_mean;
+    std::array<std::atomic<Spectrum>, 4> m_mean;
     std::array<uint16_t, 4> m_children;
 };
 
@@ -222,10 +227,10 @@ private:
 class DTree {
 public:
     DTree() {
-        m_atomic.sum.store(1, std::memory_order_relaxed);
+        m_atomic.sum.store(Spectrum(1.f), std::memory_order_relaxed);
         m_maxDepth = 0;
         m_nodes.emplace_back();
-        m_nodes.front().setMean(1.0f / 4);
+        m_nodes.front().setMean(Spectrum(1.0f / 4));
     }
 
     const QuadTreeNode& node(size_t i) const {
@@ -244,17 +249,17 @@ public:
         return m_atomic.getMeasurement();
     }
 
-    void recordRadiance(Point pos, Point2 p, Float radiance, bool count) {
+    void recordRadiance(Point pos, Point2 p, Spectrum &radiance, bool count) {
 
-        if (!std::isfinite(radiance)) {
-            radiance = 0;
+        if (!radiance.isValid()) {
+            radiance = Spectrum(0.f);
         }
 
         if (count) {
             ++m_atomic.nSamples;
         }
 
-        addToAtomicFloat(m_atomic.sum, radiance);
+        addToAtomicSpectrum(m_atomic.sum, radiance);
 
         m_nodes[0].record(p, radiance, m_nodes);
     }
@@ -406,7 +411,7 @@ private:
             return *this;
         }
 
-        std::atomic<Float> sum;
+        std::atomic<Spectrum> sum;
         std::atomic<size_t> nSamples;
 
         void recordMeasurement(const Spectrum& val) {
@@ -447,7 +452,7 @@ public:
     }
 
     void recordRadiance(const Point& pos, const Vector& dir, Spectrum radiance, bool shouldCount = true) {
-        building.recordRadiance(pos, dirToCanonical(dir), radiance.average(), shouldCount);
+        building.recordRadiance(pos, dirToCanonical(dir), radiance, shouldCount);
     }
 
     void recordMeasurement(Spectrum m) {
