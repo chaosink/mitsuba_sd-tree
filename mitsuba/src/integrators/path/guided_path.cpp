@@ -1384,8 +1384,8 @@ public:
 
                 // NNAdaptive: shading normal buffer
                 Spectrum shNormal;
-                Float lightField[m_lightFieldNum];
-                std::fill(lightField, lightField + m_lightFieldNum, 0.f);
+                Spectrum lightField[m_lightFieldNum];
+                std::fill(lightField, lightField + m_lightFieldNum, Spectrum(0.f));
                 Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, lightField,  m_normalBuffer_last->getBitmap()->getPixel(offset));
 
                 if(m_iter == m_iterExport - 1) {
@@ -1395,7 +1395,7 @@ public:
 
                 if(m_iter == m_iterExport) {
                     for (int i = 0; i < m_lightFieldNum; i++)
-                        lightFieldBlocks[i]->put(samplePos, Spectrum{lightField[i]} * spec, rRec.alpha);
+                        lightFieldBlocks[i]->put(samplePos, lightField[i] * spec, rRec.alpha);
                 }
 
                 block->put(samplePos, radiance, rRec.alpha);
@@ -1526,7 +1526,7 @@ public:
 
     }
 
-    Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec, Spectrum &shNormal, Float *lightField, const Spectrum &frameNormal) const {
+    Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec, Spectrum &shNormal, Spectrum *lightField, const Spectrum &frameNormal) const {
         struct Vertex {
             DTreeWrapper* dTree;
             Ray ray;
@@ -1752,7 +1752,7 @@ public:
                             if(posi.x > 3) posi.x = 3;
                             if(posi.y > 3) posi.y = 3;
                             int lightFieldIdx = posi.x * 4 + posi.y;
-                            lightField[lightFieldIdx] += dTree->estimateRadiance(worldDir).average();
+                            lightField[lightFieldIdx] += dTree->estimateRadiance(worldDir);
                         }
                         for (int i = 0; i < m_lightFieldNum; i++)
                             lightField[i] /= m_lightFieldSpp;
