@@ -140,7 +140,7 @@ public:
     Float pdf(Point2& p, const std::vector<QuadTreeNode>& nodes) const {
         SAssert(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
         const int index = childIndex(p);
-        if (!mean(index).isValid()) {
+        if (!mean(index).isPositive()) {
             return 0;
         }
 
@@ -250,7 +250,7 @@ public:
 
     void recordRadiance(Point pos, Point2 p, Spectrum &radiance, bool count) {
 
-        if (!radiance.isValid()) {
+        if (!radiance.isFinite()) {
             radiance = Spectrum(0.f);
         }
 
@@ -276,7 +276,7 @@ public:
     }
 
     Float evalPdf(Point2 p) const {
-        if (!mean().isValid()) {
+        if (!mean().isPositive()) {
             return 1 / (4 * M_PI);
         }
 
@@ -292,7 +292,7 @@ public:
     }
 
     Point2 sampleRadiance(Point2 sample) const {
-        if (mean().isValid()) {
+        if (!mean().isPositive()) {
             return sample;
         }
 

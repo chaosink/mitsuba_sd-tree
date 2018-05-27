@@ -471,6 +471,22 @@ public:
 		return true;
 	}
 
+	/// Returns whether the spectrum only contains valid (non-NaN, nonnegative) samples
+	inline bool isPositive() const {
+		for (int i=0; i<N; i++)
+			if (!(s[i] > 0.0f))
+				return false;
+		return true;
+	}
+
+	/// Returns whether the spectrum only contains valid (non-NaN, nonnegative) samples
+	inline bool isFinite() const {
+		for (int i=0; i<N; i++)
+			if (!std::isfinite(s[i]))
+				return false;
+		return true;
+	}
+
 	/// Multiply-accumulate operation, adds \a weight * \a spec
 	inline void addWeighted(Scalar weight, const TSpectrum &spec) {
 		for (int i=0; i<N; i++)
