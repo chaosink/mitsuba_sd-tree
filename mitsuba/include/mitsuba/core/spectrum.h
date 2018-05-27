@@ -680,7 +680,7 @@ public:
 
 	/// Create a new spectral power distribution, but don't initialize the contents
 #if !defined(MTS_DEBUG_UNINITIALIZED)
-	inline Spectrum() { }
+	inline Spectrum() noexcept { }
 #else
 	inline Spectrum() {
 		for (int i=0; i<SPECTRUM_SAMPLES; i++)

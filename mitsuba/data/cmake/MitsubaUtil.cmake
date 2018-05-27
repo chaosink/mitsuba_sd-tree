@@ -319,7 +319,7 @@ macro (add_mts_plugin _plugin_name)
     list(APPEND _plugin_core_libraries "mitsuba-bidir")
   endif()
   target_link_libraries (${_plugin_name} 
-    ${_plugin_core_libraries} ${_plugin_LINK_LIBRARIES})
+    ${_plugin_core_libraries} ${_plugin_LINK_LIBRARIES} atomic)
   
   set_target_properties (${_plugin_name} PROPERTIES PREFIX "")
   if (APPLE)

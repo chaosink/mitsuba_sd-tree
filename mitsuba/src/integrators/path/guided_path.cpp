@@ -75,7 +75,7 @@ public:
         }
     }
 
-    void setMean(int index, Spectrum &val) {
+    void setMean(int index, Spectrum val) {
         m_mean[index].store(val, std::memory_order_relaxed);
     }
 
@@ -223,7 +223,6 @@ private:
     std::array<uint16_t, 4> m_children;
 };
 
-
 class DTree {
 public:
     DTree() {
@@ -237,9 +236,9 @@ public:
         return m_nodes[i];
     }
 
-    Float mean() const {
+    Spectrum mean() const {
         if (m_atomic.nSamples == 0) {
-            return 0;
+            return Spectrum(0.f);
         }
         const Float factor = 1 / (M_PI * 4 * m_atomic.nSamples);
         return factor * m_atomic.sum;
@@ -268,16 +267,16 @@ public:
         m_atomic.recordMeasurement(m);
     }
 
-    Float evalRadiance(Point2 p) const {
+    Spectrum evalRadiance(Point2 p) const {
         if (m_atomic.nSamples == 0) {
-            return 0;
+            return Spectrum(0.f);
         }
 
         return m_nodes[0].eval(p, m_nodes) / (M_PI * m_atomic.nSamples);
     }
 
     Float evalPdf(Point2 p) const {
-        if (!(mean() > 0)) {
+        if (!mean().isValid()) {
             return 1 / (4 * M_PI);
         }
 
@@ -293,7 +292,7 @@ public:
     }
 
     Point2 sampleRadiance(Point2 sample) const {
-        if (!(mean() > 0)) {
+        if (mean().isValid()) {
             return sample;
         }
 
@@ -341,8 +340,8 @@ public:
 
             for (int i = 0; i < 4; ++i) {
                 const QuadTreeNode& otherNode = sNode.otherDTree->m_nodes[sNode.otherNodeIndex];
-                const Float total = previousDTree.m_atomic.sum;
-                const Float fraction = total > 0 ? (otherNode.mean(i) / total) : 0;
+                const Float total = previousDTree.m_atomic.sum.load().average();
+                const Float fraction = total > 0 ? (otherNode.mean(i).average() / total) : 0;
                 SAssert(fraction <= 1.0f + Epsilon);
 
                 if (sNode.depth < newMaxDepth && fraction > subdivisionThreshold) {
@@ -370,7 +369,7 @@ public:
         //m_nodes.shrink_to_fit();
 
         for (auto& node : m_nodes) {
-            node.setMean(0);
+            node.setMean(Spectrum(0.f));
         }
     }
 
@@ -383,7 +382,7 @@ private:
 
     struct Atomic {
         Atomic() {
-            sum.store(0, std::memory_order_relaxed);
+            sum.store(Spectrum(0.f), std::memory_order_relaxed);
             nSamples = 0;
 
             measurementR.store(0, std::memory_order_relaxed);
@@ -487,11 +486,11 @@ public:
         return {(cosTheta + 1) / 2, phi / (2 * M_PI)};
     }
 
-    Float estimateRadiance(Point2 p) const {
+    Spectrum estimateRadiance(Point2 p) const {
         return sampling.evalRadiance(p);
     }
 
-    Float estimateRadiance(const Vector& d) const {
+    Spectrum estimateRadiance(const Vector& d) const {
         return estimateRadiance(dirToCanonical(d));
     }
 
@@ -523,7 +522,7 @@ public:
         return sampling.numNodes();
     }
 
-    float meanRadiance() const {
+    Spectrum meanRadiance() const {
         return sampling.mean();
     }
 
@@ -551,12 +550,12 @@ public:
         blob
             << (float)p.x << (float)p.y << (float)p.z
             << (float)size.x << (float)size.y << (float)size.z
-            << (float)sampling.mean() << (uint64_t)sampling.numSamples() << (uint64_t)sampling.numNodes();
+            << sampling.mean() << (uint64_t)sampling.numSamples() << (uint64_t)sampling.numNodes();
 
         for (size_t i = 0; i < sampling.numNodes(); ++i) {
             const auto& node = sampling.node(i);
             for (int j = 0; j < 4; ++j) {
-                blob << (float)node.mean(j) << (uint16_t)node.child(j);
+                blob << node.mean(j) << (uint16_t)node.child(j);
             }
         }
     }
@@ -888,7 +887,7 @@ public:
             minDepth = std::min(minDepth, depth);
             avgDepth += depth;
 
-            const Float avgRadiance = dTree->meanRadiance();
+            const Float avgRadiance = dTree->meanRadiance().average();
             maxAvgRadiance = std::max(maxAvgRadiance, avgRadiance);
             minAvgRadiance = std::min(minAvgRadiance, avgRadiance);
             avgAvgRadiance += avgRadiance;
@@ -1753,7 +1752,7 @@ public:
                             if(posi.x > 3) posi.x = 3;
                             if(posi.y > 3) posi.y = 3;
                             int lightFieldIdx = posi.x * 4 + posi.y;
-                            lightField[lightFieldIdx] += dTree->estimateRadiance(worldDir);
+                            lightField[lightFieldIdx] += dTree->estimateRadiance(worldDir).average();
                         }
                         for (int i = 0; i < m_lightFieldNum; i++)
                             lightField[i] /= m_lightFieldSpp;
