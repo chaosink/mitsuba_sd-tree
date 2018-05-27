@@ -1518,9 +1518,9 @@ public:
         return (v);
     };
 
-   Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec) const {
+    Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec) const {
 
-   }
+    }
 
     Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec, Spectrum &shNormal, Float *lightField, const Spectrum &frameNormal) const {
         struct Vertex {
