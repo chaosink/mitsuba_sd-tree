@@ -818,6 +818,8 @@ public:
         // NNAdaptive
         m_lightFieldSpp = props.getInteger("lightFieldSpp", 1024);
         m_iterExport = props.getInteger("iterExport", -1);
+        m_lfSampleX = props.getInteger("lfSampleX", 0);
+        m_lfSampleY = props.getInteger("lfSampleY", 0);
 
         m_budgetStr = props.getString("budgetType", "seconds");
         if (m_budgetStr == "spp") {
@@ -1079,8 +1081,10 @@ public:
         }
 
         // NNAdaptive: LFSampleRecord
-        if(m_iter == m_iterExport)
+        if(m_iter == m_iterExport) {
             m_lfSampleRecord.WriteToFile("LFSampleRecord.data");
+            WriteLFSample(m_lfSampleRecord[0], m_lfSampleX, m_lfSampleY);
+        }
 
         return result;
     }
@@ -1323,13 +1327,8 @@ public:
         m_normalBuffer = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
         m_normalBuffer_last = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
 
-        // NNAdaptive: test LFSampleRecord
-        NNA::LFSampleRecord lfSampleRecord("/media/lin/MintSpace/program/CG/mitsuba_sd-tree/scenes_test/dining-room_NNAdaptive/LFSampleRecord/LFSampleRecord.data");
-        WriteLFImageSpace(lfSampleRecord, 0, 0);
-        WriteLFDirSpace(lfSampleRecord, 90, 90);
-
         // NNAdaptive: LFSampleRecord
-        m_lfSampleRecord.Allocate(film->getSize().x, film->getSize().y);
+        m_lfSampleRecord.Allocate(1, 1);
 
         Log(EInfo, "Starting render job (%ix%i, " SIZE_T_FMT " %s, " SSE_STR ") ..", film->getCropSize().x, film->getCropSize().y, nCores, nCores == 1 ? "core" : "cores");
 
@@ -1424,9 +1423,10 @@ public:
                 Spectrum shNormal;
                 Spectrum lightField[m_lightFieldNum];
                 std::fill(lightField, lightField + m_lightFieldNum, Spectrum(0.f));
-                int pixel_index = offset.y * m_lfSampleRecord.width + offset.x;
-                Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, m_lfSampleRecord[pixel_index], m_normalBuffer_last->getBitmap()->getPixel(offset));
-
+                NNA::LFSample *lfSample = nullptr;
+                if(offset.x == m_lfSampleX and offset.y == m_lfSampleY)
+                    lfSample = &m_lfSampleRecord[0];
+                Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, lfSample, m_normalBuffer_last->getBitmap()->getPixel(offset));
                 if(m_iter == m_iterExport - 1) {
                     shNormal *= spec;
                     normalBlock->put(samplePos, shNormal, rRec.alpha);
@@ -1561,7 +1561,6 @@ public:
     }
 
     void recordLightField(DTreeWrapper *dTree, NNA::LFSample &lfSample, const Vector &frameNormal) const {
-        lfSample.n_firsthit++;
         auto properties = Properties("ldsampler");
         properties.setInteger("sampleCount", m_lightFieldSpp);
         properties.setInteger("dimension", 2);
@@ -1574,17 +1573,17 @@ public:
         for (int i = 0; i < m_lightFieldSpp; i++) {
             Point2 pos = sampler->next2D();
             sampler->advance();
-            Vector localDir = Coordinate2LocalDir(pos);
-            Vector worldDir = frame.toWorld(localDir);
-            Vector2i posi(pos.x * 4, pos.y * 4);
-            if(posi.x > 3) posi.x = 3;
-            if(posi.y > 3) posi.y = 3;
-            int lightFieldIdx = posi.x * 4 + posi.y;
-            lfSample.Push(pos, dTree->estimateRadiance(worldDir));
+            // Vector localDir = Coordinate2LocalDir(pos);
+            // Vector worldDir = frame.toWorld(localDir);
+            // Vector2i posi(pos.x * 4, pos.y * 4);
+            // if(posi.x > 3) posi.x = 3;
+            // if(posi.y > 3) posi.y = 3;
+            // int lightFieldIdx = posi.x * 4 + posi.y;
+            lfSample.Push(pos, dTree->estimateRadiance(pos));
         }
     }
 
-    Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec, Spectrum &shNormal, NNA::LFSample &lfSample, const Spectrum &frameNormal) const {
+    Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec, Spectrum &shNormal, NNA::LFSample *lfSample, const Spectrum &frameNormal) const {
         struct Vertex {
             DTreeWrapper* dTree;
             Ray ray;
@@ -1791,8 +1790,9 @@ public:
                         lightFieldRecorded = true;
                     }
                     // NNAdaptive: LFSampleRecord
-                    if(m_iter == m_iterExport && !lightFieldRecorded && lfSample.n_firsthit < 16) {
-                        recordLightField(dTree, lfSample, Vector(frameNormal[0], frameNormal[1], frameNormal[2]));
+                    if(m_iter == m_iterExport && !lightFieldRecorded && lfSample && lfSample->n_firsthit < 1) {
+                        lfSample->n_firsthit++;
+                        recordLightField(dTree, *lfSample, Vector(frameNormal[0], frameNormal[1], frameNormal[2]));
                         lightFieldRecorded = true;
                     }
                 }
@@ -2108,6 +2108,8 @@ private:
     int m_lightFieldSpp;
     int m_iterExport;
     mutable NNA::LFSampleRecord m_lfSampleRecord;
+    int m_lfSampleX;
+    int m_lfSampleY;
 
     /// The modes of NEE which are supported.
     enum ENee {
