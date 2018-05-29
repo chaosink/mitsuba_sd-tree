@@ -1752,7 +1752,7 @@ public:
                             if(posi.x > 3) posi.x = 3;
                             if(posi.y > 3) posi.y = 3;
                             int lightFieldIdx = posi.x * 4 + posi.y;
-                            lightField[lightFieldIdx] += dTree->samplePdf(worldDir) * dTree->meanRadiance();
+                            lightField[lightFieldIdx] += dTree->samplePdf(worldDir) * dTree->meanRadiance() * 4 * M_PI * 4;
                         }
                         for (int i = 0; i < m_lightFieldNum; i++)
                             lightField[i] /= m_lightFieldSpp;
