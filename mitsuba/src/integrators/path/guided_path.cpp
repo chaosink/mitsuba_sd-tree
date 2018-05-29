@@ -818,6 +818,10 @@ public:
         // NNAdaptive
         m_lightFieldSpp = props.getInteger("lightFieldSpp", 1024);
         m_iterExport = props.getInteger("iterExport", -1);
+        m_lfSampleX = props.getInteger("lfSampleX", -1);
+        m_lfSampleY = props.getInteger("lfSampleY", -1);
+        m_lfBlockX = props.getInteger("lfBlockX", -1);
+        m_lfBlockY = props.getInteger("lfBlockY", -1);
 
         m_budgetStr = props.getString("budgetType", "seconds");
         if (m_budgetStr == "spp") {
@@ -1257,48 +1261,6 @@ public:
         return result;
     }
 
-    void WriteLFImageSpace(NNA::LFSampleRecord &lfSampleRecord, int block_x, int block_y) {
-        int block_idx = block_y * NNA::LFSample::DIMENSION_RESOLUTION + block_x;
-        Vector2i size = m_normalBuffer->getSize();
-        ref<Bitmap> image = new Bitmap(Bitmap::ESpectrum, Bitmap::EFloat32, size);
-        for(int y = 0; y < size.y; y++)
-            for(int x = 0; x < size.x; x++) {
-                Spectrum s;
-                int n = lfSampleRecord[y * size.x + x].n_hit[block_idx];
-                s[0] = lfSampleRecord[y * size.x + x].in_radiance[block_idx][0] / n;
-                s[1] = lfSampleRecord[y * size.x + x].in_radiance[block_idx][1] / n;
-                s[2] = lfSampleRecord[y * size.x + x].in_radiance[block_idx][2] / n;
-                image->setPixel(Point2i(x, y), s);
-            }
-        image->write(Bitmap::EOpenEXR,
-                     "LFSampleRecord_" +
-                     std::to_string(block_x) + "-" + std::to_string(block_y) +
-                     "_image-space.exr");
-    }
-
-    void WriteLFSample(NNA::LFSample &lfSample, int pixel_x, int pixel_y) {
-        Vector2i size = Vector2i(NNA::LFSample::DIMENSION_RESOLUTION);
-        ref<Bitmap> image = new Bitmap(Bitmap::ESpectrum, Bitmap::EFloat32, size);
-        for(int y = 0; y < size.y; y++)
-            for(int x = 0; x < size.x; x++) {
-                Spectrum s;
-                int n = lfSample.n_hit[y * size.x + x];
-                s[0] = lfSample.in_radiance[y * size.x + x][0] / n;
-                s[1] = lfSample.in_radiance[y * size.x + x][1] / n;
-                s[2] = lfSample.in_radiance[y * size.x + x][2] / n;
-                image->setPixel(Point2i(x, y), s);
-            }
-        image->write(Bitmap::EOpenEXR,
-                     "LFSampleRecord_" +
-                     std::to_string(pixel_x) + "-" + std::to_string(pixel_y) +
-                     "_dir-space.exr");
-    }
-
-    void WriteLFDirSpace(NNA::LFSampleRecord &lfSampleRecord, int pixel_x, int pixel_y) {
-        int pixel_idx = pixel_y * m_normalBuffer->getSize().x + pixel_x;
-        WriteLFSample(lfSampleRecord[pixel_idx], pixel_x, pixel_y);
-    }
-
     bool render(Scene *scene, RenderQueue *queue, const RenderJob *job,
         int sceneResID, int sensorResID, int samplerResID) override {
         m_sdTree = std::unique_ptr<STree>(new STree(scene->getAABB()));
@@ -1323,10 +1285,14 @@ public:
         m_normalBuffer = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
         m_normalBuffer_last = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
 
-        // NNAdaptive: test LFSampleRecord
-        NNA::LFSampleRecord lfSampleRecord("/media/lin/MintSpace/program/CG/mitsuba_sd-tree/scenes_test/dining-room_NNAdaptive/LFSampleRecord/LFSampleRecord.data");
-        WriteLFImageSpace(lfSampleRecord, 0, 0);
-        WriteLFDirSpace(lfSampleRecord, 90, 90);
+        // NNAdaptive: LFSampleRecord testing
+        if(m_lfSampleX != -1 && m_lfSampleY != -1 && m_lfBlockX != -1 && m_lfBlockY != -1) {
+            NNA::LFSampleRecord lfSampleRecord("/media/lin/MintSpace/program/CG/mitsuba_sd-tree/scenes_test/dining-room_NNAdaptive/LFSampleRecord/LFSampleRecord.data");
+            if(m_lfSampleX != -1 && m_lfSampleY != -1)
+                lfSampleRecord.WriteEXRDirSpace(m_lfSampleX, m_lfSampleY);
+            if(m_lfBlockX != -1 && m_lfBlockY != -1)
+                lfSampleRecord.WriteEXRImageSpace(m_lfBlockX, m_lfBlockY);
+        }
 
         // NNAdaptive: LFSampleRecord
         m_lfSampleRecord.Allocate(film->getSize().x, film->getSize().y);
@@ -1580,7 +1546,7 @@ public:
             if(posi.x > 3) posi.x = 3;
             if(posi.y > 3) posi.y = 3;
             int lightFieldIdx = posi.x * 4 + posi.y;
-            lfSample.Push(pos, dTree->estimateRadiance(worldDir));
+            lfSample.Push(pos, Spectrum(), dTree->estimateRadiance(worldDir));
         }
     }
 
@@ -2108,6 +2074,8 @@ private:
     int m_lightFieldSpp;
     int m_iterExport;
     mutable NNA::LFSampleRecord m_lfSampleRecord;
+    int m_lfSampleX, m_lfSampleY;
+    int m_lfBlockX, m_lfBlockY;
 
     /// The modes of NEE which are supported.
     enum ENee {
