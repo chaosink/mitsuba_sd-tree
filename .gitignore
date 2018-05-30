@@ -48,6 +48,7 @@
 *.vcxproj.user
 
 /build
+/build_no-MTS_DEBUG
 
 # Scenes
 /scenes_test
