@@ -123,6 +123,9 @@ public:
     }
 
     Float eval(Point2& p, const std::vector<QuadTreeNode>& nodes) const {
+        if(!(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1)) {
+            SLog(EInfo, "Before assert: %s", p.toString().c_str());
+        }
         SAssert(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
         const int index = childIndex(p);
         if (isLeaf(index)) {
@@ -133,6 +136,9 @@ public:
     }
 
     Float pdf(Point2& p, const std::vector<QuadTreeNode>& nodes) const {
+        if(!(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1)) {
+            SLog(EInfo, "Before assert: %s", p.toString().c_str());
+        }
         SAssert(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
         const int index = childIndex(p);
         if (!(mean(index) > 0)) {
@@ -148,6 +154,9 @@ public:
     }
 
     int depthAt(Point2& p, const std::vector<QuadTreeNode>& nodes) const {
+        if(!(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1)) {
+            SLog(EInfo, "Before assert: %s", p.toString().c_str());
+        }
         SAssert(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
         const int index = childIndex(p);
         if (isLeaf(index)) {
@@ -165,17 +174,26 @@ public:
         Float partial = topLeft + mean(2);
         Float total = partial + topRight + mean(3);
 
+        if(!(total > 0.0f)) {
+            SLog(EInfo, "Before assert: %f", total);
+        }
         SAssert(total > 0.0f);
 
         Float boundary = partial / total;
         Point2 origin = Point2{0.0f, 0.0f};
 
         if (sample.x < boundary) {
+            if(!(partial > 0.0f)) {
+                SLog(EInfo, "Before assert: %f", partial);
+            }
             SAssert(partial > 0);
             sample.x /= boundary;
             boundary = topLeft / partial;
         } else {
             partial = total - partial;
+            if(!(partial > 0.0f)) {
+                SLog(EInfo, "Before assert: %f", partial);
+            }
             SAssert(partial > 0);
             origin.x = 0.5f;
             sample.x = (sample.x - boundary) / (1.0f - boundary);
@@ -199,6 +217,9 @@ public:
     }
 
     void record(Point2& p, Float radiance, std::vector<QuadTreeNode>& nodes) {
+        if(!(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1)) {
+            SLog(EInfo, "Before assert: %s", p.toString().c_str());
+        }
         SAssert(p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1);
         int index = childIndex(p);
 
@@ -293,6 +314,9 @@ public:
         }
 
         Point2 res = m_nodes[0].sample(sample, m_nodes);
+        if(!(res.x >= 0 && res.x <= 1 && res.y >= 0 && res.y <= 1)) {
+            SLog(EInfo, "Before assert: %s", res.toString().c_str());
+        }
         SAssert(res.x >= 0 && res.x <= 1 && res.y >= 0 && res.y <= 1);
 
         return res;
@@ -338,6 +362,9 @@ public:
                 const QuadTreeNode& otherNode = sNode.otherDTree->m_nodes[sNode.otherNodeIndex];
                 const Float total = previousDTree.m_atomic.sum;
                 const Float fraction = total > 0 ? (otherNode.mean(i) / total) : 0;
+                if(!(fraction <= 1.0f + Epsilon)) {
+                    SLog(EInfo, "Before assert: %f", fraction);
+                }
                 SAssert(fraction <= 1.0f + Epsilon);
 
                 if (sNode.depth < newMaxDepth && fraction > subdivisionThreshold) {
@@ -584,6 +611,9 @@ struct STreeNode {
     }
 
     DTreeWrapper* dTreeWrapper(Point& p, std::vector<STreeNode>& nodes) {
+        if(!(p[axis] >= 0 && p[axis] <= 1)) {
+            SLog(EInfo, "Before assert: %f", p[axis]);
+        }
         SAssert(p[axis] >= 0 && p[axis] <= 1);
         if (isLeaf) {
             return &dTree;
@@ -597,6 +627,9 @@ struct STreeNode {
     }
 
     int depth(Point& p, const std::vector<STreeNode>& nodes) const {
+        if(!(p[axis] >= 0 && p[axis] <= 1)) {
+            SLog(EInfo, "Before assert: %f", p[axis]);
+        }
         SAssert(p[axis] >= 0 && p[axis] <= 1);
         if (isLeaf) {
             return 1;
