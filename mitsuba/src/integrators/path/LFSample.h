@@ -62,10 +62,10 @@ namespace NNA {
 
 		inline void Push(Point2 sample, Spectrum _out_radiance, Spectrum _in_radiance) {
 
-			for (int c = 0; c < 3; c++) {
-				// _in_radiance[c] = std::log2f(1.0F + _in_radiance[c]);
-				_in_radiance[c] = _in_radiance[c];
-			}
+			// for (int c = 0; c < 3; c++) {
+			// 	_in_radiance[c] = std::log2f(1.0F + _in_radiance[c]);
+			// 	_in_radiance[c] = _in_radiance[c];
+			// }
 
 			if (_in_radiance.isNaN() || !_in_radiance.isValid()) {
 				return;
