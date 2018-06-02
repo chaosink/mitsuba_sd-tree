@@ -1579,7 +1579,7 @@ public:
             // if(posi.x > 3) posi.x = 3;
             // if(posi.y > 3) posi.y = 3;
             // int lightFieldIdx = posi.x * 4 + posi.y;
-            lfSample.Push(pos, dTree->estimateRadiance(pos));
+            lfSample.Push(pos, Spectrum(), dTree->estimateRadiance(pos));
         }
     }
 

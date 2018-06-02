@@ -26,9 +26,8 @@ namespace NNA {
 	struct LFSample {
 
 		enum {
-			DIMENSION_RESOLUTION = 1024,
+			DIMENSION_RESOLUTION = 256,
 			LF_SIZE = DIMENSION_RESOLUTION * DIMENSION_RESOLUTION
-
 		};
 
 #if POLY_RECORD == 0
@@ -61,7 +60,7 @@ namespace NNA {
 			ReadStream(stream);
 		}
 
-		inline void Push(Point2 sample,/* Spectrum _out_radiance,*/ Spectrum _in_radiance) {
+		inline void Push(Point2 sample, Spectrum _out_radiance, Spectrum _in_radiance) {
 
 			for (int c = 0; c < 3; c++) {
 				_in_radiance[c] = std::log2f(1.0F + _in_radiance[c]);
@@ -286,6 +285,21 @@ namespace NNA {
 		inline uint32_t GetID(uint32_t block_idx_x, uint32_t block_idx_y) {
 			return block_idx_y * DIMENSION_RESOLUTION + block_idx_x;
 		}
+
+		void WriteEXR(std::string fileName) {
+			Vector2i size = Vector2i(NNA::LFSample::DIMENSION_RESOLUTION);
+			ref<Bitmap> image = new Bitmap(Bitmap::ESpectrum, Bitmap::EFloat32, size);
+			for(int y = 0; y < size.y; y++)
+				for(int x = 0; x < size.x; x++) {
+					Spectrum s;
+					int n = n_hit[y * size.x + x];
+					s[0] = in_radiance[y * size.x + x][0] / n;
+					s[1] = in_radiance[y * size.x + x][1] / n;
+					s[2] = in_radiance[y * size.x + x][2] / n;
+					image->setPixel(Point2i(x, y), s);
+				}
+			image->write(Bitmap::EOpenEXR, fileName);
+		}
 	};
 
 	struct LFSampleRecord {
@@ -387,6 +401,28 @@ namespace NNA {
 			//map->write(Bitmap::EPFM, stream);
 		}
 
+		void WriteEXRImageSpace(int block_x, int block_y) {
+			int block_idx = block_y * NNA::LFSample::DIMENSION_RESOLUTION + block_x;
+			Vector2i size(width, height);
+			ref<Bitmap> image = new Bitmap(Bitmap::ESpectrum, Bitmap::EFloat32, size);
+			for(int y = 0; y < size.y; y++)
+				for(int x = 0; x < size.x; x++) {
+					Spectrum s;
+					int n = v_samples[y * size.x + x].n_hit[block_idx];
+					s[0] = v_samples[y * size.x + x].in_radiance[block_idx][0] / n;
+					s[1] = v_samples[y * size.x + x].in_radiance[block_idx][1] / n;
+					s[2] = v_samples[y * size.x + x].in_radiance[block_idx][2] / n;
+					image->setPixel(Point2i(x, y), s);
+				}
+			image->write(Bitmap::EOpenEXR,
+				"LFSampleRecord_" + std::to_string(block_x) + "-" + std::to_string(block_y) + "_image-space.exr");
+		}
+
+		void WriteEXRDirSpace(int pixel_x, int pixel_y) {
+			int pixel_idx = pixel_y * width + pixel_x;
+			v_samples[pixel_idx].WriteEXR(
+				"LFSampleRecord_" + std::to_string(pixel_x) + "-" + std::to_string(pixel_y) + "_dir-space.exr");
+		}
 	};
 
 	inline float FastArcTan(float x)
