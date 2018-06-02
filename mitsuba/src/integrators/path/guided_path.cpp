@@ -75,7 +75,7 @@ public:
         }
     }
 
-    void setMean(int index, Spectrum val) {
+    void setMean(int index, const Spectrum &val) {
         m_mean[index].store(val, std::memory_order_relaxed);
     }
 
@@ -107,7 +107,7 @@ public:
         return m_children[idx];
     }
 
-    void setMean(Spectrum meanVal) {
+    void setMean(const Spectrum &meanVal) {
         for (int i = 0; i < 4; ++i) {
             setMean(i, meanVal);
         }
