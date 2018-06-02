@@ -816,7 +816,8 @@ public:
         m_sppPerPass = props.getInteger("sppPerPass", 4);
 
         // NNAdaptive
-        m_lightFieldSpp = props.getInteger("lightFieldSpp", 1024);
+        m_lightFieldSpb = props.getInteger("lightFieldSpb", 64);
+        m_lightFieldSpp = props.getInteger("lightFieldSpp", 16);
         m_iterExport = props.getInteger("iterExport", -1);
         m_lfSampleX = props.getInteger("lfSampleX", 0);
         m_lfSampleY = props.getInteger("lfSampleY", 0);
@@ -1561,8 +1562,9 @@ public:
     }
 
     void recordLightField(DTreeWrapper *dTree, NNA::LFSample &lfSample, const Vector &frameNormal) const {
+        int lightFieldSampleN = m_lightFieldSpb * NNA::LFSample::LF_SIZE;
         auto properties = Properties("ldsampler");
-        properties.setInteger("sampleCount", m_lightFieldSpp);
+        properties.setInteger("sampleCount", lightFieldSampleN);
         properties.setInteger("dimension", 2);
         ref<Sampler> sampler = static_cast<Sampler *>(PluginManager::getInstance()->createObject(
             MTS_CLASS(Sampler), properties));
@@ -1570,7 +1572,7 @@ public:
 
         Frame frame(frameNormal);
 
-        for (int i = 0; i < m_lightFieldSpp; i++) {
+        for (int i = 0; i < lightFieldSampleN; i++) {
             Point2 pos = sampler->next2D();
             sampler->advance();
             Vector localDir = Coordinate2LocalDir(pos);
@@ -1786,7 +1788,7 @@ public:
                         lightFieldRecorded = true;
                     }
                     // NNAdaptive: LFSampleRecord
-                    if(m_iter == m_iterExport && !lightFieldRecorded && lfSample && lfSample->n_firsthit < 1) {
+                    if(m_iter == m_iterExport && !lightFieldRecorded && lfSample && lfSample->n_firsthit < m_lightFieldSpp) {
                         lfSample->n_firsthit++;
                         recordLightField(dTree, *lfSample, Vector(frameNormal[0], frameNormal[1], frameNormal[2]));
                         lightFieldRecorded = true;
@@ -2101,6 +2103,7 @@ private:
     mutable ref<ImageBlock> m_normalBuffer_last;
     mutable ref<ImageBlock> m_normalBuffer;
     const static int m_lightFieldNum = 16;
+    int m_lightFieldSpb;
     int m_lightFieldSpp;
     int m_iterExport;
     mutable NNA::LFSampleRecord m_lfSampleRecord;
