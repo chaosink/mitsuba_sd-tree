@@ -969,9 +969,6 @@ public:
         m_image->clear();
         m_squaredImage->clear();
 
-        // NNAdaptive: shading normal buffer
-        m_normalBuffer->clear();
-
         size_t totalBlocks = 0;
 
         Log(EInfo, "Rendering %d render passes.", numPasses);
@@ -1298,6 +1295,7 @@ public:
 
         // NNAdaptive: shading normal buffer
         m_normalBuffer = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
+        m_normalBuffer->clear();
 
         // NNAdaptive: LFSampleRecord
         m_lfSampleRecord.Allocate(1, m_lfSampleN);
