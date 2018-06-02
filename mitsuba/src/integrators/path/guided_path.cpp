@@ -1079,7 +1079,6 @@ public:
             Point2i borderSize(m_normalBuffer->getBorderSize());
             Vector2i imageSize = m_normalBuffer->getSize();
             m_normalBuffer->getBitmap()->crop(borderSize, imageSize)->write(Bitmap::EOpenEXR, "normal_" + std::to_string(m_iter) + ".exr");
-            std::swap(m_normalBuffer, m_normalBuffer_last);
         }
 
         // NNAdaptive: LFSampleRecord
@@ -1287,7 +1286,6 @@ public:
 
         // NNAdaptive: shading normal buffer
         m_normalBuffer = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
-        m_normalBuffer_last = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
 
         // NNAdaptive: LFSampleRecord
         m_lfSampleRecord.Allocate(1, m_lfSampleN);
@@ -1388,7 +1386,7 @@ public:
                 NNA::LFSample *lfSample = nullptr;
                 if(m_lfSampleMap[{offset.x, offset.y}])
                     lfSample = &m_lfSampleRecord[m_lfSampleMap[{offset.x, offset.y}] - 1];
-                Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, lfSample, m_normalBuffer_last->getBitmap()->getPixel(offset));
+                Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, lfSample, m_normalBuffer->getBitmap()->getPixel(offset));
                 if(m_iter == m_iterExport - 1) {
                     shNormal *= spec;
                     normalBlock->put(samplePos, shNormal, rRec.alpha);
@@ -2061,7 +2059,6 @@ private:
     mutable ref<Film> m_varianceBuffer;
 
     /// NNAdaptive: shading normal buffer
-    mutable ref<ImageBlock> m_normalBuffer_last;
     mutable ref<ImageBlock> m_normalBuffer;
     const static int m_lightFieldNum = 16;
     int m_lightFieldSpb;
