@@ -294,9 +294,11 @@ namespace NNA {
 				for(int x = 0; x < size.x; x++) {
 					Spectrum s;
 					int n = n_hit[y * size.x + x];
-					s[0] = in_radiance[y * size.x + x][0] / n;
-					s[1] = in_radiance[y * size.x + x][1] / n;
-					s[2] = in_radiance[y * size.x + x][2] / n;
+					if(n != 0) {
+						s[0] = in_radiance[y * size.x + x][0] / n;
+						s[1] = in_radiance[y * size.x + x][1] / n;
+						s[2] = in_radiance[y * size.x + x][2] / n;
+					}
 					image->setPixel(Point2i(x, y), s);
 				}
 			image->write(Bitmap::EOpenEXR, fileName);
@@ -410,9 +412,11 @@ namespace NNA {
 				for(int x = 0; x < size.x; x++) {
 					Spectrum s;
 					int n = v_samples[y * size.x + x].n_hit[block_idx];
-					s[0] = v_samples[y * size.x + x].in_radiance[block_idx][0] / n;
-					s[1] = v_samples[y * size.x + x].in_radiance[block_idx][1] / n;
-					s[2] = v_samples[y * size.x + x].in_radiance[block_idx][2] / n;
+					if(n) {
+						s[0] = v_samples[y * size.x + x].in_radiance[block_idx][0] / n;
+						s[1] = v_samples[y * size.x + x].in_radiance[block_idx][1] / n;
+						s[2] = v_samples[y * size.x + x].in_radiance[block_idx][2] / n;
+					}
 					image->setPixel(Point2i(x, y), s);
 				}
 			image->write(Bitmap::EOpenEXR,
