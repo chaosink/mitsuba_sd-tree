@@ -963,9 +963,6 @@ public:
         m_image->clear();
         m_squaredImage->clear();
 
-        // NNAdaptive: shading normal buffer
-        m_normalBuffer->clear();
-
         size_t totalBlocks = 0;
 
         Log(EInfo, "Rendering %d render passes.", numPasses);
@@ -1287,6 +1284,7 @@ public:
 
         // NNAdaptive: shading normal buffer
         m_normalBuffer = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
+        m_normalBuffer->clear();
         // NNAdaptive: light field export
         for(int i = 0; i < m_lightFieldNum; i++)
             m_lightFieldBuffers[i] = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
