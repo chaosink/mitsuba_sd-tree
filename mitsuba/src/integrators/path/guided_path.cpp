@@ -1573,13 +1573,9 @@ public:
         for (int i = 0; i < m_lightFieldSpp; i++) {
             Point2 pos = sampler->next2D();
             sampler->advance();
-            // Vector localDir = Coordinate2LocalDir(pos);
-            // Vector worldDir = frame.toWorld(localDir);
-            // Vector2i posi(pos.x * 4, pos.y * 4);
-            // if(posi.x > 3) posi.x = 3;
-            // if(posi.y > 3) posi.y = 3;
-            // int lightFieldIdx = posi.x * 4 + posi.y;
-            lfSample.Push(pos, Spectrum(), dTree->estimateRadiance(pos));
+            Vector localDir = Coordinate2LocalDir(pos);
+            Vector worldDir = frame.toWorld(localDir);
+            lfSample.Push(pos, Spectrum(), dTree->estimateRadiance(worldDir));
         }
     }
 
