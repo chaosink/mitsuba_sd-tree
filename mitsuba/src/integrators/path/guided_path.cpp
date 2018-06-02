@@ -1087,7 +1087,19 @@ public:
             for(int i = 0; i < m_lfSampleN; i++)
                 m_lfSampleRecord[i].WriteEXR(
                     "LFSampleRecord_" + std::to_string(m_lfSampleX[i]) + "-" + std::to_string(m_lfSampleY[i]) + "_dir-space.exr");
+            std::ofstream ofs("lfSamplePos.txt");
+
+            ofs << "X = {";
+            for(int i = 0; i < m_lfSampleN; i++)
+                ofs << m_lfSampleX[i] << (i == m_lfSampleN - 1 ? "" : ", ");
+            ofs << "}" << std::endl << "Y = {";
+            for(int i = 0; i < m_lfSampleN; i++)
+                ofs << m_lfSampleY[i] << (i == m_lfSampleN - 1 ? "" : ", ");
+            ofs << "}" << std::endl;
         }
+
+        int m_lfSampleX[m_lfSampleN] = {250, 219, 411, 231,  91, 229, 378};
+        int m_lfSampleY[m_lfSampleN] = {365, 398, 377, 196, 111,  78,  71};
 
         return result;
     }
