@@ -820,7 +820,7 @@ public:
         m_lightFieldSpp = props.getInteger("lightFieldSpp", 16);
         m_iterExport = props.getInteger("iterExport", -1);
         for(int i = 0; i < m_lfSampleN; i++)
-            m_lfSample[{m_lfSampleX[i], m_lfSampleY[i]}] = i + 1;
+            m_lfSampleMap[{m_lfSampleX[i], m_lfSampleY[i]}] = i + 1;
 
 
         m_budgetStr = props.getString("budgetType", "seconds");
@@ -1386,8 +1386,8 @@ public:
                 Spectrum lightField[m_lightFieldNum];
                 std::fill(lightField, lightField + m_lightFieldNum, Spectrum(0.f));
                 NNA::LFSample *lfSample = nullptr;
-                if(m_lfSample[{offset.x, offset.y}])
-                    lfSample = &m_lfSampleRecord[m_lfSample[{offset.x, offset.y}] - 1];
+                if(m_lfSampleMap[{offset.x, offset.y}])
+                    lfSample = &m_lfSampleRecord[m_lfSampleMap[{offset.x, offset.y}] - 1];
                 Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, lfSample, m_normalBuffer_last->getBitmap()->getPixel(offset));
                 if(m_iter == m_iterExport - 1) {
                     shNormal *= spec;
@@ -2069,7 +2069,7 @@ private:
     int m_iterExport;
     mutable NNA::LFSampleRecord m_lfSampleRecord;
     const static int m_lfSampleN = 7;
-    mutable std::map<std::pair<int, int>, int> m_lfSample;
+    mutable std::map<std::pair<int, int>, int> m_lfSampleMap;
     int m_lfSampleX[m_lfSampleN] = {250, 219, 411, 231,  91, 229, 378};
     int m_lfSampleY[m_lfSampleN] = {365, 398, 377, 196, 111,  78,  71};
 
