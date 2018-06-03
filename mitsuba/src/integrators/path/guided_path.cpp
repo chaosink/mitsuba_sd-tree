@@ -1095,9 +1095,6 @@ public:
             ofs << "}" << std::endl;
         }
 
-        int m_lfSampleX[m_lfSampleN] = {250, 219, 411, 231,  91, 229, 378};
-        int m_lfSampleY[m_lfSampleN] = {365, 398, 377, 196, 111,  78,  71};
-
         return result;
     }
 
@@ -2075,10 +2072,10 @@ private:
     int m_lightFieldSpp;
     int m_iterExport;
     mutable NNA::LFSampleRecord m_lfSampleRecord;
-    const static int m_lfSampleN = 7;
+    const static int m_lfSampleN = /*7 + */4;
     mutable std::map<std::pair<int, int>, int> m_lfSampleMap;
-    int m_lfSampleX[m_lfSampleN] = {250, 219, 411, 231,  91, 229, 378};
-    int m_lfSampleY[m_lfSampleN] = {365, 398, 377, 196, 111,  78,  71};
+    int m_lfSampleX[m_lfSampleN] = {/*250, 219, 411, 231,  91, 229, 378, */229, 239, 249, 259};
+    int m_lfSampleY[m_lfSampleN] = {/*365, 398, 377, 196, 111,  78,  71, */408, 418, 428, 438};
 
     /// The modes of NEE which are supported.
     enum ENee {
