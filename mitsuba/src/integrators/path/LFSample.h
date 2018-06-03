@@ -292,7 +292,7 @@ namespace NNA {
 			ref<Bitmap> image = new Bitmap(Bitmap::ESpectrum, Bitmap::EFloat32, size);
 			for(int y = 0; y < size.y; y++)
 				for(int x = 0; x < size.x; x++) {
-					Spectrum s;
+					Spectrum s(0.f);
 					int n = n_hit[y * size.x + x];
 					if(n != 0) {
 						s[0] = in_radiance[y * size.x + x][0] / n;
@@ -410,9 +410,9 @@ namespace NNA {
 			ref<Bitmap> image = new Bitmap(Bitmap::ESpectrum, Bitmap::EFloat32, size);
 			for(int y = 0; y < size.y; y++)
 				for(int x = 0; x < size.x; x++) {
-					Spectrum s;
+					Spectrum s(0.f);
 					int n = v_samples[y * size.x + x].n_hit[block_idx];
-					if(n) {
+					if(n != 0) {
 						s[0] = v_samples[y * size.x + x].in_radiance[block_idx][0] / n;
 						s[1] = v_samples[y * size.x + x].in_radiance[block_idx][1] / n;
 						s[2] = v_samples[y * size.x + x].in_radiance[block_idx][2] / n;
