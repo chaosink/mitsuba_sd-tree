@@ -814,7 +814,7 @@ public:
         m_sppPerPass = props.getInteger("sppPerPass", 4);
 
         // NNAdaptive
-        m_lightFieldSpp = props.getInteger("lightFieldSpp", 1024);
+        m_lightFieldSampleN = props.getInteger("lightFieldSampleN", 1024);
         m_iterExport = props.getInteger("iterExport", -1);
 
         m_budgetStr = props.getString("budgetType", "seconds");
@@ -1059,33 +1059,18 @@ public:
         Log(EInfo, "%.2f seconds, Total passes: %d, Var: %f, TTUV: %f, STUV: %f.",
             seconds, m_passesRendered, variance, ttuv, stuv);
 
-        // NNAdaptive: shading normal buffer
-        if(m_iter == m_iterExport - 1) {
+        // NNAdaptive: preview image
+        if(m_iter == m_iterExport) {
             for (int x = 0; x < size.x; ++x)
                 for (int y = 0; y < size.y; ++y) {
                     Point2i pos = Point2i(x, y);
-                    Spectrum spec = m_normalBuffer->getBitmap()->getPixel(pos) / N;
-                    m_normalBuffer->getBitmap()->setPixel(pos, spec);
+                    Spectrum spec = m_previewImage->getBitmap()->getPixel(pos) / N;
+                    m_previewImage->getBitmap()->setPixel(pos, spec);
                 }
-            Point2i borderSize(m_normalBuffer->getBorderSize());
-            Vector2i imageSize = m_normalBuffer->getSize();
-            m_normalBuffer->getBitmap()->crop(borderSize, imageSize)->write(Bitmap::EOpenEXR, "normal_" + std::to_string(m_iter) + ".exr");
+            Point2i borderSize(m_previewImage->getBorderSize());
+            Vector2i imageSize = m_previewImage->getSize();
+            m_previewImage->getBitmap()->crop(borderSize, imageSize)->write(Bitmap::EOpenEXR, "preview.exr");
         }
-
-        // NNAdaptive: light field buffer
-        if(m_iter == m_iterExport)
-            for(int i = 0; i < m_lightFieldNum; i++) {
-                for (int x = 0; x < size.x; ++x)
-                    for (int y = 0; y < size.y; ++y) {
-                        Point2i pos = Point2i(x, y);
-                        Spectrum spec = m_lightFieldBuffers[i]->getBitmap()->getPixel(pos) / N;
-                        m_lightFieldBuffers[i]->getBitmap()->setPixel(pos, spec);
-                    }
-                Point2i borderSize(m_lightFieldBuffers[i]->getBorderSize());
-                Vector2i imageSize = m_lightFieldBuffers[i]->getSize();
-                m_lightFieldBuffers[i]->getBitmap()->crop(borderSize, imageSize)->write(Bitmap::EOpenEXR,
-                                                           "light_filed_" + std::to_string(i) + ".exr");
-            }
 
         return result;
     }
@@ -1150,7 +1135,7 @@ public:
             if (m_automaticBudget && remainingPasses > 0 && (
                     // if there is any time remaining we want to keep going if
                     // either will have less time next iter
-                    remainingPasses < passesThisIteration ||
+// preview image                    remainingPasses < passesThisIteration ||
                     // or, according to the convergence behavior, we're better off if we keep going
                     // (we only trust the variance if we drew enough samples for it to be a reliable estimate,
                     // captured by an arbitraty threshold).
@@ -1282,12 +1267,9 @@ public:
         m_squaredImage = new ImageBlock(Bitmap::ESpectrumAlphaWeight, film->getSize(), film->getReconstructionFilter());
         m_image = new ImageBlock(Bitmap::ESpectrumAlphaWeight, film->getSize(), film->getReconstructionFilter());
 
-        // NNAdaptive: shading normal buffer
-        m_normalBuffer = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
-        m_normalBuffer->clear();
-        // NNAdaptive: light field export
-        for(int i = 0; i < m_lightFieldNum; i++)
-            m_lightFieldBuffers[i] = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
+        // NNAdaptive: preview image
+        m_previewImage = new ImageBlock(Bitmap::ESpectrumAlpha, film->getSize(), film->getReconstructionFilter());
+        m_previewImage->clear();
 
         Log(EInfo, "Starting render job (%ix%i, " SIZE_T_FMT " %s, " SSE_STR ") ..", film->getCropSize().x, film->getCropSize().y, nCores, nCores == 1 ? "core" : "cores");
 
@@ -1345,14 +1327,11 @@ public:
         normalBlock->clear();
         normalBlock->setWarn(false);
 
-        // NNAdaptive: light field buffer
-        std::array<ref<ImageBlock>, m_lightFieldNum> lightFieldBlocks;
-        for(int i = 0; i < m_lightFieldNum; i++) {
-            lightFieldBlocks[i] = new ImageBlock(Bitmap::ESpectrumAlpha, block->getSize(),
-                                                 block->getReconstructionFilter());
-            lightFieldBlocks[i]->setOffset(block->getOffset());
-            lightFieldBlocks[i]->clear();
-        }
+        // NNAdaptive: preview image
+        ref<ImageBlock> previewImage = new ImageBlock(Bitmap::ESpectrumAlpha, block->getSize(),
+            block->getReconstructionFilter());
+        previewImage->setOffset(block->getOffset());
+        previewImage->clear();
 
         uint32_t queryType = RadianceQueryRecord::ESensorRay;
 
@@ -1379,20 +1358,11 @@ public:
                 sensorRay.scaleDifferential(diffScaleFactor);
 
                 // NNAdaptive: shading normal buffer
-                Spectrum shNormal;
-                Spectrum lightField[m_lightFieldNum];
-                std::fill(lightField, lightField + m_lightFieldNum, Spectrum(0.f));
-                Point2i borderSize(m_normalBuffer->getBorderSize());
-                Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, lightField,  m_normalBuffer->getBitmap()->getPixel(offset + borderSize));
-
-                if(m_iter == m_iterExport - 1) {
-                    shNormal *= spec;
-                    normalBlock->put(samplePos, shNormal, rRec.alpha);
-                }
+                Spectrum previewLi;
+                Spectrum radiance = spec * Li(sensorRay, rRec, previewLi);
 
                 if(m_iter == m_iterExport) {
-                    for (int i = 0; i < m_lightFieldNum; i++)
-                        lightFieldBlocks[i]->put(samplePos, lightField[i] * spec, rRec.alpha);
+                    previewImage->put(samplePos, previewLi * spec, rRec.alpha);
                 }
 
                 block->put(samplePos, radiance, rRec.alpha);
@@ -1401,14 +1371,9 @@ public:
             }
         }
 
-        // NNAdaptive: shading normal buffer
-        if(m_iter == m_iterExport - 1)
-            m_normalBuffer->put(normalBlock);
-
-        // NNAdaptive: light field buffer
+        // NNAdaptive: preview image
         if(m_iter == m_iterExport)
-            for(int i = 0; i < m_lightFieldNum; i++)
-                m_lightFieldBuffers[i]->put(lightFieldBlocks[i]);
+            m_previewImage->put(previewImage);
 
         m_squaredImage->put(squaredBlock);
         m_image->put(block);
@@ -1421,8 +1386,8 @@ public:
         }
     }
 
-    Spectrum sampleMat(const BSDF* bsdf, BSDFSamplingRecord& bRec, Float& pdf, RadianceQueryRecord& rRec, const DTreeWrapper* dTree) const {
-        Point2 sample = rRec.nextSample2D();
+    Spectrum sampleMat(const BSDF* bsdf, BSDFSamplingRecord& bRec, Float& pdf, Sampler* sampler, const DTreeWrapper* dTree) const {
+        Point2 sample = sampler->next2D();
 
         auto type = bsdf->getType();
         if (!m_isBuilt || !dTree || (type & BSDF::EDelta) == (type & BSDF::EAll)) {
@@ -1523,7 +1488,7 @@ public:
 
     }
 
-    Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec, Spectrum &shNormal, Spectrum *lightField, const Spectrum &frameNormal) const {
+    Spectrum Li(const RayDifferential &r, RadianceQueryRecord &rRec, Spectrum &previewLi) const {
         struct Vertex {
             DTreeWrapper* dTree;
             Ray ray;
@@ -1544,8 +1509,6 @@ public:
                 dTree->recordRadiance(ray.o, ray.d, radiance, shouldCount);
             }
         };
-
-        bool lightFieldRecorded = false;
 
         static const int NUM_VERTICES = 32;
         std::array<Vertex, NUM_VERTICES> vertices;
@@ -1721,39 +1684,39 @@ public:
                 if (bsdf->getType() & BSDF::ESmooth) {
                     dTree = m_sdTree->dTreeWrapper(its.p);
 
-                    // NNAdaptive: shading normal buffer
-                    if(m_iter == m_iterExport - 1 && !lightFieldRecorded) {
-                        Vector n = its.shFrame.n;
-                        if(Frame::cosTheta(its.wi) < 0)
-                            n = -n;
-                        shNormal.fromLinearRGB(n.x, n.y, n.z);
-                        lightFieldRecorded = true;
-                    }
-                    // NNAdaptive: light field buffer
-                    if(m_iter == m_iterExport && !lightFieldRecorded) {
+                    // NNAdaptive: preview image
+                    if(m_iter == m_iterExport) {
                         auto properties = Properties("ldsampler");
-                        properties.setInteger("sampleCount", m_lightFieldSpp);
+                        properties.setInteger("sampleCount", m_lightFieldSampleN);
                         properties.setInteger("dimension", 2);
                         ref<Sampler> sampler = static_cast<Sampler *>(PluginManager::getInstance()->createObject(
                             MTS_CLASS(Sampler), properties));
                         sampler->generate(Point2i());
 
-                        Frame frame(Vector(frameNormal[0], frameNormal[1], frameNormal[2]));
-
-                        for (int i = 0; i < m_lightFieldSpp; i++) {
-                            Point2 pos = sampler->next2D();
+                        previewLi = Spectrum(0.f);
+                        int sampleN = 0;
+                        for (int i = 0; i < m_lightFieldSampleN; i++) {
+                            Float bsdfPdf;
+                            BSDFSamplingRecord bRec(its, sampler, ERadiance);
+                            Spectrum bsdfWeight = sampleMat(bsdf, bRec, bsdfPdf, sampler, dTree);
+                            // Spectrum bsdfWeight = bsdf->sample(bRec, bsdfPdf, sampler->next2D());
                             sampler->advance();
-                            Vector localDir = Coordinate2LocalDir(pos);
-                            Vector worldDir = frame.toWorld(localDir);
-                            Vector2i posi(pos.x * 4, pos.y * 4);
-                            if(posi.x > 3) posi.x = 3;
-                            if(posi.y > 3) posi.y = 3;
-                            int lightFieldIdx = posi.x * 4 + posi.y;
-                            lightField[lightFieldIdx] += dTree->estimateRadiance(worldDir);
+
+                            if (bsdfWeight.isZero())
+                                continue;
+
+                            /* Prevent light leaks due to the use of shading normals */
+                            const Vector wo = its.toWorld(bRec.wo);
+                            Float woDotGeoN = dot(its.geoFrame.n, wo);
+                            if (m_strictNormals && woDotGeoN * Frame::cosTheta(bRec.wo) <= 0)
+                                continue;
+
+                            previewLi += dTree->estimateRadiance(wo) * bsdfWeight;
+                            sampleN++;
                         }
-                        for (int i = 0; i < m_lightFieldNum; i++)
-                            lightField[i] /= m_lightFieldSpp;
-                        lightFieldRecorded = true;
+                        previewLi *= throughput * 0.25 / sampleN;
+                        previewLi += Li;
+                        return previewLi;
                     }
                 }
 
@@ -1764,7 +1727,7 @@ public:
                 /* Sample BSDF * cos(theta) */
                 BSDFSamplingRecord bRec(its, rRec.sampler, ERadiance);
                 Float bsdfPdf;
-                Spectrum bsdfWeight = sampleMat(bsdf, bRec, bsdfPdf, rRec, dTree);
+                Spectrum bsdfWeight = sampleMat(bsdf, bRec, bsdfPdf, rRec.sampler, dTree);
 
                 /* ==================================================================== */
                 /*                          Luminaire sampling                          */
@@ -2061,11 +2024,9 @@ private:
     /// This contains the currently estimated variance.
     mutable ref<Film> m_varianceBuffer;
 
-    /// NNAdaptive: shading normal buffer
-    mutable ref<ImageBlock> m_normalBuffer;
-    const static int m_lightFieldNum = 16;
-    int m_lightFieldSpp;
-    mutable std::array<ref<ImageBlock>, m_lightFieldNum> m_lightFieldBuffers;
+    /// NNAdaptive: preview image
+    mutable ref<ImageBlock> m_previewImage;
+    int m_lightFieldSampleN;
     int m_iterExport;
 
     /// The modes of NEE which are supported.
