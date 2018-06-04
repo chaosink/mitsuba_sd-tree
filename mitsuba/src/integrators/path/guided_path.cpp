@@ -1378,7 +1378,8 @@ public:
                 Spectrum shNormal;
                 Float lightField[m_lightFieldNum];
                 std::fill(lightField, lightField + m_lightFieldNum, 0.f);
-                Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, lightField,  m_normalBuffer->getBitmap()->getPixel(offset));
+                Point2i borderSize(m_normalBuffer->getBorderSize());
+                Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, lightField,  m_normalBuffer->getBitmap()->getPixel(offset + borderSize));
 
                 if(m_iter == m_iterExport - 1) {
                     shNormal *= spec;
