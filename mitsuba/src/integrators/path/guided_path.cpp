@@ -1748,7 +1748,7 @@ public:
                     // NNAdaptive: shading normal buffer
                     if(m_iter == m_iterExport - 1 && !lightFieldRecorded) {
                         Vector n = its.shFrame.n;
-                        if(Frame::cosTheta(its.wi) < 0)
+                        if(Frame::cosTheta(its.wi) < 0.f && !(its.getBSDF()->getType() & BSDF::ETransmission))
                             n = -n;
                         shNormal.fromLinearRGB(n.x, n.y, n.z);
                         lightFieldRecorded = true;
