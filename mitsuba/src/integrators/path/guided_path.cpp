@@ -1353,15 +1353,6 @@ public:
         normalBlock->clear();
         normalBlock->setWarn(false);
 
-        // NNAdaptive: light field buffer
-        std::array<ref<ImageBlock>, m_lightFieldNum> lightFieldBlocks;
-        for(int i = 0; i < m_lightFieldNum; i++) {
-            lightFieldBlocks[i] = new ImageBlock(Bitmap::ESpectrumAlpha, block->getSize(),
-                                                 block->getReconstructionFilter());
-            lightFieldBlocks[i]->setOffset(block->getOffset());
-            lightFieldBlocks[i]->clear();
-        }
-
         uint32_t queryType = RadianceQueryRecord::ESensorRay;
 
         if (!sensor->getFilm()->hasAlpha()) // Don't compute an alpha channel if we don't have to
@@ -1388,8 +1379,6 @@ public:
 
                 // NNAdaptive: shading normal buffer
                 Spectrum shNormal;
-                Spectrum lightField[m_lightFieldNum];
-                std::fill(lightField, lightField + m_lightFieldNum, Spectrum(0.f));
                 NNA::LFSample *lfSample = nullptr;
                 if(m_lfSampleMap[{offset.x, offset.y}])
                     lfSample = &m_lfSampleRecord[m_lfSampleMap[{offset.x, offset.y}] - 1];
@@ -1398,11 +1387,6 @@ public:
                 if(m_iter == m_iterExport - 1) {
                     shNormal *= spec;
                     normalBlock->put(samplePos, shNormal, rRec.alpha);
-                }
-
-                if(m_iter == m_iterExport) {
-                    for (int i = 0; i < m_lightFieldNum; i++)
-                        lightFieldBlocks[i]->put(samplePos, lightField[i] * spec, rRec.alpha);
                 }
 
                 block->put(samplePos, radiance, rRec.alpha);
@@ -2068,7 +2052,6 @@ private:
 
     /// NNAdaptive: shading normal buffer
     mutable ref<ImageBlock> m_normalBuffer;
-    const static int m_lightFieldNum = 16;
     int m_lightFieldSpb;
     int m_lightFieldSpp;
     int m_iterExport;
