@@ -1423,7 +1423,8 @@ public:
                 NNA::LFSample *lfSample = nullptr;
                 if(offset.x == m_lfSampleX and offset.y == m_lfSampleY)
                     lfSample = &m_lfSampleRecord[0];
-                Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, lfSample, m_normalBuffer->getBitmap()->getPixel(offset));
+                Point2i borderSize(m_normalBuffer->getBorderSize());
+                Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, lfSample, m_normalBuffer->getBitmap()->getPixel(offset + borderSize));
                 if(m_iter == m_iterExport - 1) {
                     shNormal *= spec;
                     normalBlock->put(samplePos, shNormal, rRec.alpha);
