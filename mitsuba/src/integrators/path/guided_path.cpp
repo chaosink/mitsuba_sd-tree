@@ -1046,6 +1046,21 @@ public:
                 if (shouldAbort) {
                     goto l_abort;
                 }
+
+                std::cout << std::endl;
+                std::cout << "m_iter                  : " << m_iter << std::endl;
+                std::cout << "m_passesRendered        : " << m_passesRendered << std::endl;
+                std::cout << "m_passesRenderedThisIter: " << m_passesRenderedThisIter << std::endl;
+                std::cout << "passesRenderedLocal     : " << passesRenderedLocal << std::endl;
+                int passInIter[9] = {1, 2, 4, 8, 16, 32, 64, 128, 256};
+                if(m_passesRenderedThisIter == passInIter[m_iter] || m_passesRenderedThisIter == passInIter[m_iter] / 2) {
+                    float elapsedSeconds = computeElapsedSeconds(m_startTime);
+                    std::string fileName = "pass_" + std::to_string(m_passesRendered) + "_" + std::to_string(elapsedSeconds) + "s.exr";
+                    std::cout << "Writing EXR after pass " << m_passesRendered << ": " << fileName << std::endl;
+                    film->setDestinationFile(fileName, 0);
+                    film->develop(scene, 0);
+                    film->setDestinationFile(scene->getDestinationFile(), 0);
+                }
             }
         }
     l_abort:
