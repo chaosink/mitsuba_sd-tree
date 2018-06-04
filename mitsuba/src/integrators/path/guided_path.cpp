@@ -1388,8 +1388,8 @@ public:
                 Spectrum lightField[m_lightFieldNum];
                 std::fill(lightField, lightField + m_lightFieldNum, Spectrum(0.f));
                 int pixel_index = offset.y * m_lfSampleRecord.width + offset.x;
-                Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, m_lfSampleRecord[pixel_index], m_normalBuffer->getBitmap()->getPixel(offset));
-
+                Point2i borderSize(m_normalBuffer->getBorderSize());
+                Spectrum radiance = spec * Li(sensorRay, rRec, shNormal, m_lfSampleRecord[pixel_index], m_normalBuffer->getBitmap()->getPixel(offset + borderSize));
                 if(m_iter == m_iterExport - 1) {
                     shNormal *= spec;
                     normalBlock->put(samplePos, shNormal, rRec.alpha);
