@@ -1132,6 +1132,8 @@ public:
         m_progress = std::unique_ptr<ProgressReporter>(new ProgressReporter("Rendering", nPasses, job));
 
         while (result && m_passesRendered < nPasses) {
+            m_passesRenderedThisIter = 0;
+
             const int sppRendered = m_passesRendered * m_sppPerPass;
             m_doNee = doNeeWithSpp(sppRendered);
 
@@ -1181,7 +1183,6 @@ public:
             }
 
             ++m_iter;
-            m_passesRenderedThisIter = 0;
         }
 
         return result;
