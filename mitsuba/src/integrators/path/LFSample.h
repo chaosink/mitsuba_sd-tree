@@ -32,27 +32,27 @@ namespace NNA {
 
 #if POLY_RECORD == 0
 
-		half in_radiance[LF_SIZE][3];
+		Float in_radiance[LF_SIZE][3];
 		Frame pix_frame;
 		//Spectrum out_radiance[LF_SIZE];
 		unsigned short n_hit[LF_SIZE];
 		unsigned short n_firsthit = 0;
 
 		LFSample() {
-			memset(in_radiance, 0, sizeof(half) * 3 * LF_SIZE);
+			memset(in_radiance, 0, sizeof(Float) * 3 * LF_SIZE);
 			memset(n_hit, 0, sizeof(unsigned short) * LF_SIZE);
 		}
 
 		inline void serialize(Stream *stream) {
 			pix_frame.serialize(stream);
-			stream->writeHalfArray((half *)in_radiance, LF_SIZE * 3);
+			stream->writeFloatArray((Float *)in_radiance, LF_SIZE * 3);
 			stream->writeUShortArray(n_hit, LF_SIZE);
 
 		}
 
 		inline void ReadStream(Stream *stream) {
 			pix_frame = Frame(stream);
-			stream->readHalfArray((half *)in_radiance, LF_SIZE * 3);
+			stream->readFloatArray((Float *)in_radiance, LF_SIZE * 3);
 			stream->readUShortArray(n_hit, LF_SIZE);
 		}
 
@@ -87,8 +87,8 @@ namespace NNA {
 
 		struct Curve {
 
-			half center[3][2];     // coordinate center for rgb channels
-			half curve_parameter[3][6]; // a*x^2 + b*y^2 + c*x*y + d*x + e*y + f for rgb channels
+			Float center[3][2];     // coordinate center for rgb channels
+			Float curve_parameter[3][6]; // a*x^2 + b*y^2 + c*x*y + d*x + e*y + f for rgb channels
 
 			std::vector<Point2> temporal_coordinate;
 			std::vector<Spectrum> temporal_in_radiance;
@@ -104,15 +104,15 @@ namespace NNA {
 
 			inline void serialize(Stream *stream) {
 				for (int i = 0; i < 3; i++) {
-					stream->writeHalfArray<2>(center[i]);
-					stream->writeHalfArray<6>(curve_parameter[i]);
+					stream->writeFloatArray<2>(center[i]);
+					stream->writeFloatArray<6>(curve_parameter[i]);
 				}
 			}
 
 			Curve(Stream *stream) {
 				for (int i = 0; i < 3; i++) {
-					stream->readHalfArray<2>(center[i]);
-					stream->readHalfArray<6>(curve_parameter[i]);
+					stream->readFloatArray<2>(center[i]);
+					stream->readFloatArray<6>(curve_parameter[i]);
 				}
 			}
 
@@ -171,7 +171,7 @@ namespace NNA {
 						if (success) {
 
 							for (int p = 0; p < 6; p++) {
-								half &set = curve_parameter[c][p];
+								Float &set = curve_parameter[c][p];
 								set = curve[p];
 								if (set.isInfinity() || set.isNan()) {
 									success = false;
@@ -188,7 +188,7 @@ namespace NNA {
 							if (success) {
 
 								for (int p = 0; p < 3; p++) {
-									half &set = curve_parameter[c][p + 3];
+									Float &set = curve_parameter[c][p + 3];
 									set = curve[p];
 									if (set.isInfinity() || set.isNan()) {
 										success = false;
